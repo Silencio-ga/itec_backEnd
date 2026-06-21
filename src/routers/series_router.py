@@ -1,43 +1,15 @@
-from fastapi import FastAPI, Body, Path, Query, HTTPException
 from typing import Annotated
-from pydantic import BaseModel, Field
+from fastapi import HTTPException, Path, APIRouter
 
-app = FastAPI()
-app.title = "Nuestra primera APP"
+from src.schemas.series_schemas import serie, serieUpdate
 
-
-#==========
-#  Modelo
-#==========
-
-class serie(BaseModel):
-    id: Annotated[int, Field(gt=0)]
-    nombre: Annotated[
-        str,
-        Field(min_length=3, max_length=35, examples= ["Breaking Bad"], default= "Stranger Things"),
-        ]
-    genero: Annotated[
-        str,
-        Field(min_length=3, max_length=35, examples= ["Drama"], default= "Ciencia ficción")
-    ]
-    score: Annotated[int, Field(gt=0, le=100, examples=[50], default=50)]
-
-class serieUpdate(BaseModel):
-    nombre: Annotated[
-        str,
-        Field(min_length=3, max_length=35, examples= ["Breaking Bad"], default= "Stranger Things"),
-        ]
-    genero: Annotated[
-        str,
-        Field(min_length=3, max_length=35, examples= ["Drama"], default= "Ciencia ficción")
-    ]
-    score: Annotated[int, Field(gt=0, le=100, examples=[50], default=50)]
+series_router = APIRouter()
 
 #========
 # Datos
 #========
 
-series = [
+series: list[serie] = [
     {"id": 1,"nombre": "Breaking Bad","genero": "Drama", "score": 54},
     {"id": 2,"nombre": "Stranger Things","genero": "Ciencia ficción", "score": 75},
     {"id": 3,"nombre": "Game of Thrones","genero": "Fantasía", "score": 12},
@@ -51,12 +23,12 @@ series = [
 #============
 
 # lista de series
-@app.get("/series", tags=["buscar series"], response_model=list[serie])
+@series_router.get("/", tags=["buscar series"], response_model=list[serie])
 def obtener_series() -> list[serie]:
     return series
 
 # buscar serie por ID
-@app.get("/series/{id}", 
+@series_router.get("/{id}", 
     tags=["buscar series"], 
     response_model=serie,
     responses={
@@ -78,7 +50,7 @@ def obtener_serie(id: Annotated[int, Path(gt=0)]) -> serie:
 #    POST 
 #============
 
-@app.post("/agregar-serie", tags=["añadir serie"], response_model=list[serie])
+@series_router.post("/", tags=["añadir serie"], response_model=list[serie])
 def agregar_serie(serie:serie) -> list[serie]:
     series.append(serie.model_dump())
     return series
@@ -87,8 +59,8 @@ def agregar_serie(serie:serie) -> list[serie]:
 #    PUT 
 #============
 
-@app.put(
-    "/editar-serie/{id}", 
+@series_router.put(
+    "/{id}", 
     tags=["editar"],
     response_model=serieUpdate,
     responses={
@@ -114,7 +86,7 @@ def editar_serie(
 #   DELETE 
 #============
 
-@app.delete("/borrar-serie/{id}", 
+@series_router.delete("/{id}", 
     tags=["elimina"], 
     response_model=list[serie],
     responses={
