@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test CRUD - Libros</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; padding: 2rem; background: #f5f5f5; }
+    h1 { margin-bottom: 1.5rem; }
+    .container { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 1200px; margin: 0 auto; }
+    .card { background: #fff; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+    .card h2 { margin-bottom: 1rem; font-size: 1.1rem; }
+    input { display: block; width: 100%; padding: .5rem; margin-bottom: .5rem; border: 1px solid #ddd; border-radius: 4px; }
+    button { padding: .5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; }
+    button:hover { opacity: .85; }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-danger { background: #dc2626; color: #fff; }
+    .btn-success { background: #16a34a; color: #fff; }
+    .btn-warning { background: #d97706; color: #fff; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; grid-column: 1 / -1; }
+    th, td { padding: .5rem; border: 1px solid #ddd; text-align: left; }
+    th { background: #f0f0f0; font-weight: 600; }
+    .msg { margin-top: .5rem; padding: .5rem; border-radius: 4px; font-size: .875rem; }
+    .msg.success { background: #dcfce7; color: #166534; }
+    .msg.error { background: #fee2e2; color: #991b1b; }
+    .full-width { grid-column: 1 / -1; }
+  </style>
+</head>
+<body>
+  <h1>Test CRUD — Libros</h1>
+
+  <div class="container">
+    <!-- GET by ID -->
+    <div class="card">
+      <h2>GET /libros/{id}</h2>
+      <input type="number" id="get-id" placeholder="ID" min="1">
+      <button class="btn-primary" onclick="obtenerLibro()">Obtener</button>
+      <div id="msg-get" class="msg"></div>
+    </div>
+
+    <!-- POST -->
+    <div class="card">
+      <h2>POST /libros</h2>
+      <input type="text" id="post-titulo" placeholder="Título">
+      <input type="text" id="post-autor" placeholder="Autor">
+      <input type="number" id="post-paginas" placeholder="Páginas" min="1">
+      <button class="btn-success" onclick="agregarLibro()">Agregar</button>
+      <div id="msg-post" class="msg"></div>
+    </div>
+
+    <!-- PUT -->
+    <div class="card">
+      <h2>PUT /libros/{id}</h2>
+      <input type="number" id="put-id" placeholder="ID" min="1">
+      <input type="text" id="put-titulo" placeholder="Título">
+      <input type="text" id="put-autor" placeholder="Autor">
+      <input type="number" id="put-paginas" placeholder="Páginas" min="1">
+      <button class="btn-warning" onclick="editarLibro()">Editar</button>
+      <div id="msg-put" class="msg"></div>
+    </div>
+
+    <!-- DELETE -->
+    <div class="card">
+      <h2>DELETE /libros/{id}</h2>
+      <input type="number" id="delete-id" placeholder="ID" min="1">
+      <button class="btn-danger" onclick="borrarLibro()">Eliminar</button>
+      <div id="msg-delete" class="msg"></div>
+    </div>
+
+    <!-- Tabla -->
+    <table id="tabla-libros" class="full-width">
+      <thead>
+        <tr><th>ID</th><th>Título</th><th>Autor</th><th>Páginas</th></tr>
+      </thead>
+      <tbody id="tbody-libros"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const BASE = "http://localhost:8000/libros";
+
+    function mostrarMsg(id, texto, tipo) {
+      const el = document.getElementById(id);
+      el.textContent = texto;
+      el.className = "msg " + tipo;
+      setTimeout(() => el.textContent = "", 3000);
+    }
+
+    async function request(method, path, body) {
+      const opts = { method, headers: { "Content-Type": "application/json" } };
+      if (body) opts.body = JSON.stringify(body);
+      const res = await fetch(BASE + path, opts);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Error " + res.status);
+      return data;
+    }
+
+    async function obtenerLibros() {
+      try {
+        const data = await request("GET", "/");
+        const tbody = document.getElementById("tbody-libros");
+        tbody.innerHTML = data.map(s => `
+          <tr><td>${s.id}</td><td>${s.titulo}</td><td>${s.autor}</td><td>${s.paginas}</td></tr>
+        `).join("");
+      } catch (e) {
+        mostrarMsg("msg-get", "Error al cargar libros: " + e.message, "error");
+      }
+    }
+
+    async function obtenerLibro() {
+      const id = document.getElementById("get-id").value;
+      if (!id) return mostrarMsg("msg-get", "Ingresá un ID", "error");
+      try {
+        const s = await request("GET", "/" + id);
+        mostrarMsg("msg-get", JSON.stringify(s), "success");
+      } catch (e) {
+        mostrarMsg("msg-get", e.message, "error");
+      }
+    }
+
+    async function agregarLibro() {
+      const titulo = document.getElementById("post-titulo").value.trim();
+      const autor = document.getElementById("post-autor").value.trim();
+      const paginas = parseInt(document.getElementById("post-paginas").value);
+      if (!titulo || !autor || !paginas) return mostrarMsg("msg-post", "Completá todos los campos", "error");
+      try {
+        await request("POST", "/", { titulo, autor, paginas });
+        mostrarMsg("msg-post", "Libro agregado", "success");
+        document.getElementById("post-titulo").value = "";
+        document.getElementById("post-autor").value = "";
+        document.getElementById("post-paginas").value = "";
+        obtenerLibros();
+      } catch (e) {
+        mostrarMsg("msg-post", e.message, "error");
+      }
+    }
+
+    async function editarLibro() {
+      const id = document.getElementById("put-id").value;
+      const titulo = document.getElementById("put-titulo").value.trim();
+      const autor = document.getElementById("put-autor").value.trim();
+      const paginas = parseInt(document.getElementById("put-paginas").value);
+      if (!id || !titulo || !autor || !paginas) return mostrarMsg("msg-put", "Completá todos los campos", "error");
+      try {
+        await request("PUT", "/" + id, { titulo, autor, paginas });
+        mostrarMsg("msg-put", "Libro actualizado", "success");
+        document.getElementById("put-id").value = "";
+        document.getElementById("put-titulo").value = "";
+        document.getElementById("put-autor").value = "";
+        document.getElementById("put-paginas").value = "";
+        obtenerLibros();
+      } catch (e) {
+        mostrarMsg("msg-put", e.message, "error");
+      }
+    }
+
+    async function borrarLibro() {
+      const id = document.getElementById("delete-id").value;
+      if (!id) return mostrarMsg("msg-delete", "Ingresá un ID", "error");
+      try {
+        await request("DELETE", "/" + id);
+        mostrarMsg("msg-delete", "Libro eliminado", "success");
+        document.getElementById("delete-id").value = "";
+        obtenerLibros();
+      } catch (e) {
+        mostrarMsg("msg-delete", e.message, "error");
+      }
+    }
+
+    obtenerLibros();
+  </script>
+</body>
+</html>
